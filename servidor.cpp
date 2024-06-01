@@ -103,7 +103,7 @@ bool verificarVictoria(char jugador)
     return false;
 }
 
-bool colocarFicha(int columna, char jugador, int socket_cliente)
+bool colocarFicha(int columna, char jugador)
 {
     for (int i = FILAS - 1; i >= 0; --i)
     {
@@ -131,8 +131,8 @@ void jugarPartida(int socket_cliente, struct sockaddr_in direccionCliente)
     inet_ntop(AF_INET, &(direccionCliente.sin_addr), ip, INET_ADDRSTRLEN);
 
     inicializarTablero();
-    char jugadorActual = 'S';
-    char otroJugador = 'C';
+    char jugadorActual = 'C';
+    char otroJugador = 'S';
 
     cout << "[" << ip << "] Bienvenido al juego 4 en línea, juegas como 'C'\n";
 
@@ -140,28 +140,49 @@ void jugarPartida(int socket_cliente, struct sockaddr_in direccionCliente)
     {
         imprimirTablero(socket_cliente);
 
-        int columna = -1;
-        n_bytes = recv(socket_cliente, buffer, sizeof(buffer), 0);
-        if (n_bytes <= 0)
+        if (jugadorActual == 'C')
         {
-            cout << "[" << ip << "] Error de conexión o cliente desconectado. Saliendo del juego." << endl;
-            break;
-        }
-        columna = atoi(buffer) - 1;
-
-        if (!validarEntrada(columna) || !colocarFicha(columna, jugadorActual, socket_cliente))
-        {
-            const char *msg = "Entrada inválida o columna llena. Intenta nuevamente.\n";
+            const char *msg = "Es tu turno. Ingresa el número de columna (1-7): ";
             send(socket_cliente, msg, strlen(msg), 0);
-            continue;
-        }
+            int columna = -1;
+            n_bytes = recv(socket_cliente, buffer, sizeof(buffer), 0);
+            if (n_bytes <= 0)
+            {
+                cout << "[" << ip << "] Error de conexión o cliente desconectado. Saliendo del juego." << endl;
+                break;
+            }
+            columna = atoi(buffer) - 1;
 
-        if (verificarVictoria(jugadorActual))
+            if (!validarEntrada(columna) || !colocarFicha(columna, jugadorActual))
+            {
+                const char *msg = "Entrada inválida o columna llena. Intenta nuevamente.\n";
+                send(socket_cliente, msg, strlen(msg), 0);
+                continue;
+            }
+
+            if (verificarVictoria(jugadorActual))
+            {
+                imprimirTablero(socket_cliente);
+                const char *msg = "Felicidades, has ganado!\n";
+                send(socket_cliente, msg, strlen(msg), 0);
+                break;
+            }
+        }
+        else // Turno del servidor (CPU)
         {
-            imprimirTablero(socket_cliente);
-            const char *msg = (jugadorActual == 'C') ? "Felicidades, has ganado!\n" : "La CPU ha ganado.\n";
-            send(socket_cliente, msg, strlen(msg), 0);
-            break;
+            srand(time(0)); // Semilla para la función rand
+            int columna = rand() % COLUMNAS;
+            while (!colocarFicha(columna, jugadorActual))
+            {
+                columna = rand() % COLUMNAS;
+            }
+            if (verificarVictoria(jugadorActual))
+            {
+                imprimirTablero(socket_cliente);
+                const char *msg = "La CPU ha ganado.\n";
+                send(socket_cliente, msg, strlen(msg), 0);
+                break;
+            }
         }
 
         if (tableroLleno())
@@ -173,29 +194,6 @@ void jugarPartida(int socket_cliente, struct sockaddr_in direccionCliente)
         }
 
         swap(jugadorActual, otroJugador);
-
-        if (jugadorActual == 'S')
-        {
-            columna = rand() % COLUMNAS;
-            while (!colocarFicha(columna, jugadorActual, socket_cliente))
-            {
-                columna = rand() % COLUMNAS;
-            }
-            if (verificarVictoria(jugadorActual))
-            {
-                imprimirTablero(socket_cliente);
-                const char *msg = "La CPU ha ganado.\n";
-                send(socket_cliente, msg, strlen(msg), 0);
-                break;
-            }
-            if (tableroLleno())
-            {
-                imprimirTablero(socket_cliente);
-                const char *msg = "El juego terminó en empate.\n";
-                send(socket_cliente, msg, strlen(msg), 0);
-                break;
-            }
-        }
     }
 }
 
