@@ -3,6 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <iostream>
+#include <limits>
 
 using namespace std;
 
@@ -14,6 +15,18 @@ void imprimirMensaje(int socket_cliente)
     {
         buffer[n_bytes] = '\0';
         cout << buffer << endl;
+    }
+    else if (n_bytes == 0)
+    {
+        cout << "Conexión cerrada por el servidor." << endl;
+        close(socket_cliente);
+        exit(0);
+    }
+    else
+    {
+        cerr << "Error en la recepción de datos." << endl;
+        close(socket_cliente);
+        exit(1);
     }
 }
 
@@ -59,14 +72,22 @@ int main(int argc, char **argv)
         cout << "Ingresa el número de columna (1-7): ";
         int columna;
         cin >> columna;
-        if (columna < 1 || columna > 7)
+        if (cin.fail() || columna < 1 || columna > 7)
         {
+            cin.clear(); // Clear the error flag
+            cin.ignore(numeric_limits<streamsize>::max(), '\n'); // Ignore invalid input
             cerr << "Entrada inválida. Intenta de nuevo." << endl;
             continue;
         }
 
         string input = to_string(columna);
-        send(socket_cliente, input.c_str(), input.size(), 0);
+        ssize_t bytes_sent = send(socket_cliente, input.c_str(), input.size(), 0);
+        if (bytes_sent < 0)
+        {
+            cerr << "Error al enviar datos." << endl;
+            close(socket_cliente);
+            return 1;
+        }
     }
 
     close(socket_cliente);
