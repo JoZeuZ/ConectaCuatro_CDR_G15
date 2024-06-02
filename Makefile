@@ -1,9 +1,9 @@
-all: servidor cliente
+all:    servidor    cliente
 
-servidor: servidor.cpp
+servidor:   servidor.cpp
     g++ -o servidor servidor.cpp -pthread
 
-cliente: cliente.cpp
+cliente:    cliente.cpp
     g++ -o cliente cliente.cpp
 
 clean:
